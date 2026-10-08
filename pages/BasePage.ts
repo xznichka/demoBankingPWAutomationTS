@@ -12,11 +12,17 @@ export abstract class BasePage {
 
   constructor(readonly page: Page) {
     this.leftMenu = new LeftMenu(page);
-    this.title = page.locator('#rightPanel h1.title');
+    // Several pages keep hidden result/error panels with their own titles; only the visible one counts.
+    this.title = page.locator('#rightPanel h1.title:visible');
     this.errorMessage = page.locator('#rightPanel p.error');
   }
 
   async open(): Promise<void> {
     await this.page.goto(this.path);
+  }
+
+  /** The option values of a `<select>`, e.g. the account numbers in an account list. */
+  protected async optionValues(select: Locator): Promise<string[]> {
+    return select.locator('option').evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
   }
 }

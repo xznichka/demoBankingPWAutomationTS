@@ -1,5 +1,17 @@
-import { test as base, expect, APIRequestContext } from '@playwright/test';
-import { OverviewPage, RegisterPage } from '../pages';
+import { test as base, expect, APIRequestContext, Page } from '@playwright/test';
+import { ParaBankApi } from '../api/ParaBankApi';
+import {
+  ActivityPage,
+  BillPayPage,
+  HomePage,
+  LookupPage,
+  OpenAccountPage,
+  OverviewPage,
+  RegisterPage,
+  RequestLoanPage,
+  TransactionPage,
+  TransferPage,
+} from '../pages';
 import { createUser, UserData } from '../utils/testData';
 
 export interface RegisteredUser extends UserData {
@@ -12,8 +24,20 @@ interface Fixtures {
   user: UserData;
   /** A user registered behind the scenes. The browser page is NOT logged in as them. */
   registeredUser: RegisteredUser;
+  /** The browser page, already logged in as `registeredUser`. */
+  loggedInPage: Page;
+  /** REST API client for fast data setup. */
+  api: ParaBankApi;
+  homePage: HomePage;
   registerPage: RegisterPage;
+  lookupPage: LookupPage;
   overviewPage: OverviewPage;
+  activityPage: ActivityPage;
+  transactionPage: TransactionPage;
+  openAccountPage: OpenAccountPage;
+  transferPage: TransferPage;
+  billPayPage: BillPayPage;
+  requestLoanPage: RequestLoanPage;
 }
 
 /** Submits the registration form over HTTP, then looks up the new customer's IDs through the REST API. */
@@ -39,19 +63,11 @@ async function registerViaHttp(request: APIRequestContext, user: UserData): Prom
     'Your account was created successfully',
   );
 
-  const headers = { Accept: 'application/json' };
-  const login = await request.get(
-    `services/bank/login/${encodeURIComponent(user.username)}/${encodeURIComponent(user.password)}`,
-    { headers },
-  );
-  expect(login, 'REST login after registration').toBeOK();
-  const customerId: number = (await login.json()).id;
+  const api = new ParaBankApi(request);
+  const customer = await api.login(user.username, user.password);
+  const [firstAccount] = await api.getAccounts(customer.id);
 
-  const accounts = await request.get(`services/bank/customers/${customerId}/accounts`, { headers });
-  expect(accounts, 'REST accounts lookup after registration').toBeOK();
-  const [firstAccount] = await accounts.json();
-
-  return { ...user, customerId, firstAccountId: firstAccount.id };
+  return { ...user, customerId: customer.id, firstAccountId: firstAccount.id };
 }
 
 export const test = base.extend<Fixtures>({
@@ -67,13 +83,30 @@ export const test = base.extend<Fixtures>({
     await use(registered);
   },
 
-  registerPage: async ({ page }, use) => {
-    await use(new RegisterPage(page));
+  loggedInPage: async ({ page, registeredUser }, use) => {
+    // page.request shares cookies with the browser, so logging in over HTTP logs the page in too.
+    await page.request.get('index.htm');
+    const response = await page.request.post('login.htm', {
+      form: { username: registeredUser.username, password: registeredUser.password },
+    });
+    expect(await response.text(), `login of ${registeredUser.username} failed`).toContain('Accounts Overview');
+    await use(page);
   },
 
-  overviewPage: async ({ page }, use) => {
-    await use(new OverviewPage(page));
+  api: async ({ request }, use) => {
+    await use(new ParaBankApi(request));
   },
+
+  homePage: async ({ page }, use) => use(new HomePage(page)),
+  registerPage: async ({ page }, use) => use(new RegisterPage(page)),
+  lookupPage: async ({ page }, use) => use(new LookupPage(page)),
+  overviewPage: async ({ page }, use) => use(new OverviewPage(page)),
+  activityPage: async ({ page }, use) => use(new ActivityPage(page)),
+  transactionPage: async ({ page }, use) => use(new TransactionPage(page)),
+  openAccountPage: async ({ page }, use) => use(new OpenAccountPage(page)),
+  transferPage: async ({ page }, use) => use(new TransferPage(page)),
+  billPayPage: async ({ page }, use) => use(new BillPayPage(page)),
+  requestLoanPage: async ({ page }, use) => use(new RequestLoanPage(page)),
 });
 
 export { expect };

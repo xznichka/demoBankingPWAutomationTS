@@ -1,3 +1,11 @@
 export { BasePage } from './BasePage';
+export { HomePage } from './HomePage';
 export { RegisterPage, type RegisterField } from './RegisterPage';
+export { LookupPage, type LookupField } from './LookupPage';
 export { OverviewPage, type AccountRow } from './OverviewPage';
+export { ActivityPage, type AccountDetails, type ActivityRow, type TransactionTypeFilter } from './ActivityPage';
+export { TransactionPage, type TransactionField } from './TransactionPage';
+export { OpenAccountPage } from './OpenAccountPage';
+export { TransferPage } from './TransferPage';
+export { BillPayPage, type BillPayError, type BillPayField, type BillPayment } from './BillPayPage';
+export { RequestLoanPage } from './RequestLoanPage';

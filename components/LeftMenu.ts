@@ -20,6 +20,12 @@ export class LeftMenu {
     return this.root.getByRole('link', { name, exact: true });
   }
 
+  async logIn(username: string, password: string): Promise<void> {
+    await this.loginForm.locator('input[name="username"]').fill(username);
+    await this.loginForm.locator('input[name="password"]').fill(password);
+    await this.loginForm.getByRole('button', { name: 'Log In' }).click();
+  }
+
   async logOut(): Promise<void> {
     await this.logOutLink.click();
   }

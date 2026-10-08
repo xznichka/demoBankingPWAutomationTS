@@ -11,6 +11,16 @@ export interface UserData {
   password: string;
 }
 
+export interface PayeeData {
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phoneNumber: string;
+  accountNumber: string;
+}
+
 const FIRST_NAMES = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Casey', 'Morgan', 'Riley', 'Jamie'];
 const LAST_NAMES = ['Smith', 'Garcia', 'Nguyen', 'Kowalski', 'Okafor', 'Silva', 'Tanaka', 'Novak'];
 const CITIES: Array<[city: string, state: string, zip: string]> = [
@@ -47,6 +57,23 @@ export function createUser(overrides: Partial<UserData> = {}): UserData {
     ssn: digits(9),
     username: uniqueUsername(),
     password: `Pw_${randomSuffix()}${digits(4)}`,
+    ...overrides,
+  };
+}
+
+const PAYEES = ['City Power', 'Metro Water', 'FastNet Internet', 'Green Gas Co', 'Sunrise Mobile'];
+
+/** A bill payee with a random account number. */
+export function createPayee(overrides: Partial<PayeeData> = {}): PayeeData {
+  const [city, state, zipCode] = pick(CITIES);
+  return {
+    name: `${pick(PAYEES)} ${randomSuffix()}`,
+    street: `${Math.floor(Math.random() * 9000) + 100} Market St`,
+    city,
+    state,
+    zipCode,
+    phoneNumber: `555${digits(7)}`,
+    accountNumber: digits(8),
     ...overrides,
   };
 }

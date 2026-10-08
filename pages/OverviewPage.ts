@@ -41,4 +41,18 @@ export class OverviewPage extends BasePage {
     }
     return rows;
   }
+
+  async getTotal(): Promise<number> {
+    await this.waitForAccounts();
+    return parseMoney(await this.totalRow.locator('td').nth(1).innerText());
+  }
+
+  accountLink(accountId: string | number): Locator {
+    return this.accountTable.getByRole('link', { name: String(accountId), exact: true });
+  }
+
+  async openAccountDetails(accountId: string | number): Promise<void> {
+    await this.waitForAccounts();
+    await this.accountLink(accountId).click();
+  }
 }

@@ -3,7 +3,7 @@
 **Application under test:** https://parabank.parasoft.com/parabank/
 **Framework:** Playwright + TypeScript
 **Browsers:** Chromium, Firefox, WebKit
-**Status:** In progress. Implemented: Registration (`tests/ui/register.spec.ts`).
+**Status:** In progress. Implemented: `tests/ui/` register, auth, lookup, accounts, open-account, transfer and bill-pay specs.
 
 ParaBank is a public demo of an online bank, built by Parasoft. It has no real money, but the environment is **shared**: anyone on the internet can create users, move money, or reset the database from the Admin page. The plan is designed around that.
 
@@ -136,7 +136,7 @@ Priority: **P1** = critical path / smoke, **P2** = main functionality, **P3** = 
 | TRF-02 | Both accounts show the transaction in their Activity | "Funds Transfer Sent" (debit) and "Funds Transfer Received" (credit) | P2 |
 | TRF-03 | Decimal amount (e.g. 10.55) | Balances are correct to the cent | P3 |
 | TRF-04 | Empty amount | A validation message. *Currently "An internal error has occurred" — KI-03* | P3 |
-| TRF-05 | Non-numeric / negative / zero amount | Rejected with a validation message | P3 |
+| TRF-05 | Non-numeric / negative / zero amount | Rejected with a validation message. *Currently "abc" gives an internal error (KI-03); -10 and 0 are transferred (KI-09)* | P3 |
 | TRF-06 | Amount larger than the balance | Should be rejected. *Currently accepted — KI-04* | P3 |
 | TRF-07 | From and To set to the same account | Should be blocked. *Currently allowed — KI-05* | P3 |
 
@@ -150,7 +150,7 @@ Priority: **P1** = critical path / smoke, **P2** = main functionality, **P3** = 
 | BILL-04 | Account # and Verify Account # differ | "The account numbers do not match." | P2 |
 | BILL-05 | Non-numeric amount | "Please enter a valid amount." | P3 |
 | BILL-06 | Non-numeric account number | A validation message | P3 |
-| BILL-07 | Amount larger than the balance | Should be rejected (check the actual behaviour) | P3 |
+| BILL-07 | Amount larger than the balance | Should be rejected. *Currently accepted — KI-10* | P3 |
 
 ### 3.8 Find Transactions (`FIND`)
 
@@ -350,12 +350,14 @@ These were seen manually while writing this plan. Tests covering them should be 
 |---|---|---|
 | KI-01 | Lookup | Forgot Login Info returned "could not be found" for a customer that had just been registered and then had its city updated. Needs investigation; it may fail when several customers share an SSN or after a profile update |
 | KI-02 | Security | Opening `overview.htm` while logged out shows "An internal error has occurred and has been logged." instead of redirecting to login |
-| KI-03 | Transfer | Submitting Transfer with an empty amount gives an internal error instead of a validation message |
+| KI-03 | Transfer | Submitting Transfer with an empty or non-numeric amount (e.g. `abc`) gives an internal error instead of a validation message |
 | KI-04 | Transfer | A transfer of $999,999 (far above the balance) is reported as "Transfer Complete!". No overdraft check |
 | KI-05 | Transfer | You can transfer to the same account (From = To) |
 | KI-06 | Find Transactions | An invalid date (13-45-2020) returns an empty results table with no validation error |
 | KI-07 | Registration | Phone # is optional on registration but required on Bill Pay and Update Profile. The rules are inconsistent |
 | KI-08 | Registration | A username longer than 20 characters is rejected with "This username already exists." instead of a length message (seen 08/10/2026) |
+| KI-09 | Transfer | Negative (-10) and zero amounts are reported as "Transfer Complete!"; a negative transfer moves money backwards |
+| KI-10 | Bill Pay | A $999,999 bill payment (far above the balance) is reported as "Bill Payment Complete". No overdraft check |
 
 ---
 

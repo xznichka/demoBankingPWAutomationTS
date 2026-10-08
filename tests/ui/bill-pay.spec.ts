@@ -44,7 +44,8 @@ test.describe('Bill Pay', { tag: '@regression' }, () => {
     await billPayPage.pay({ payee, amount: '33.33', fromAccountId: before.id });
     await expect(billPayPage.resultTitle).toHaveText('Bill Payment Complete');
 
-    expect(toCents((await api.getAccount(before.id)).balance)).toBe(toCents(before.balance) - 3333);
+    // The balance can lag a moment behind the confirmation page, so poll instead of reading once.
+    await expect.poll(async () => toCents((await api.getAccount(before.id)).balance)).toBe(toCents(before.balance) - 3333);
     await activityPage.openFor(before.id);
     expect(await activityPage.getTransactions()).toContainEqual(
       expect.objectContaining({ description: `Bill Payment to ${payee.name}`, debit: 33.33, credit: null }),

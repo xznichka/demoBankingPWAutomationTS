@@ -21,8 +21,9 @@ test.describe('Transfer Funds', { tag: '@regression' }, () => {
     await expect(transferPage.amountResult).toHaveText('$50.00');
     await expect(transferPage.fromAccountResult).toHaveText(String(from.id));
     await expect(transferPage.toAccountResult).toHaveText(String(to.id));
-    expect(toCents((await api.getAccount(from.id)).balance)).toBe(toCents(from.balance) - 5000);
-    expect(toCents((await api.getAccount(to.id)).balance)).toBe(toCents(to.balance) + 5000);
+    // Balances can lag a moment behind the confirmation page, so poll instead of reading once.
+    await expect.poll(async () => toCents((await api.getAccount(from.id)).balance)).toBe(toCents(from.balance) - 5000);
+    await expect.poll(async () => toCents((await api.getAccount(to.id)).balance)).toBe(toCents(to.balance) + 5000);
   });
 
   test('TRF-02 both accounts show the transfer in their activity', async ({
@@ -51,8 +52,8 @@ test.describe('Transfer Funds', { tag: '@regression' }, () => {
     await transferPage.transfer('10.55', from.id, to.id);
 
     await expect(transferPage.amountResult).toHaveText('$10.55');
-    expect(toCents((await api.getAccount(from.id)).balance)).toBe(toCents(from.balance) - 1055);
-    expect(toCents((await api.getAccount(to.id)).balance)).toBe(toCents(to.balance) + 1055);
+    await expect.poll(async () => toCents((await api.getAccount(from.id)).balance)).toBe(toCents(from.balance) - 1055);
+    await expect.poll(async () => toCents((await api.getAccount(to.id)).balance)).toBe(toCents(to.balance) + 1055);
   });
 
   test(

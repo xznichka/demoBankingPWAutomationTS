@@ -1,4 +1,4 @@
-import { test as base, expect, APIRequestContext, Page } from '@playwright/test';
+import { test as base, expect, APIRequestContext, APIResponse, Page } from '@playwright/test';
 import { ParaBankApi } from '../api/ParaBankApi';
 import {
   ActivityPage,
@@ -40,6 +40,18 @@ interface Fixtures {
   requestLoanPage: RequestLoanPage;
 }
 
+/**
+ * Fails with a short, clear message when Cloudflare answers instead of ParaBank
+ * (rate limit or bot challenge), rather than dumping the whole challenge page.
+ */
+async function expectParaBankPage(response: APIResponse, step: string, expectedText: string): Promise<void> {
+  const body = await response.text();
+  const blocked =
+    response.status() === 429 || /<title>Just a moment\.\.\.<\/title>|error code: 1015|You are being rate limited/.test(body);
+  expect(blocked, `${step}: blocked by Cloudflare (HTTP ${response.status()}); the shared site is throttling test traffic, retry later`).toBe(false);
+  expect(body.includes(expectedText), `${step}: expected "${expectedText}" in the response`).toBe(true);
+}
+
 /** Submits the registration form over HTTP, then looks up the new customer's IDs through the REST API. */
 async function registerViaHttp(request: APIRequestContext, user: UserData): Promise<RegisteredUser> {
   // Opening the form first starts a server session; posting without one returns the error page.
@@ -59,9 +71,7 @@ async function registerViaHttp(request: APIRequestContext, user: UserData): Prom
       repeatedPassword: user.password,
     },
   });
-  expect(await form.text(), `registration of ${user.username} failed`).toContain(
-    'Your account was created successfully',
-  );
+  await expectParaBankPage(form, `registration of ${user.username}`, 'Your account was created successfully');
 
   const api = new ParaBankApi(request);
   const customer = await api.login(user.username, user.password);
@@ -89,7 +99,7 @@ export const test = base.extend<Fixtures>({
     const response = await page.request.post('login.htm', {
       form: { username: registeredUser.username, password: registeredUser.password },
     });
-    expect(await response.text(), `login of ${registeredUser.username} failed`).toContain('Accounts Overview');
+    await expectParaBankPage(response, `login of ${registeredUser.username}`, 'Accounts Overview');
     await use(page);
   },
 

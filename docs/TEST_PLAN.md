@@ -3,7 +3,7 @@
 **Application under test:** https://parabank.parasoft.com/parabank/
 **Framework:** Playwright + TypeScript
 **Browsers:** Chromium, Firefox, WebKit
-**Status:** Draft. No tests implemented yet.
+**Status:** In progress. Implemented: Registration (`tests/ui/register.spec.ts`).
 
 ParaBank is a public demo of an online bank, built by Parasoft. It has no real money, but the environment is **shared**: anyone on the internet can create users, move money, or reset the database from the Admin page. The plan is designed around that.
 
@@ -55,6 +55,7 @@ ParaBank is a public demo of an online bank, built by Parasoft. It has no real m
 ### Test data strategy
 
 - **Every test registers its own user**, with a unique username such as `qa_<timestamp>_<random>` and a **unique SSN**. Never rely on a pre-existing account like `john/demo`, because other people change or delete it.
+- Usernames must be **20 characters or fewer** (see KI-08), so use a short form such as `qa_<base36 timestamp>_<4 random>`.
 - A new user always gets one CHECKING account. Its starting balance comes from the global Admin "Init. Balance" setting, $515.50 when observed. Tests should **read the starting balance** rather than hard-code it, and assert on *differences*: balance before vs. after.
 - Generate test data (names, addresses, amounts) in `utils/testData.ts`, so it's never copy-pasted.
 
@@ -65,7 +66,7 @@ ParaBank is a public demo of an online bank, built by Parasoft. It has no real m
 | Someone resets the DB mid-run, so users disappear | Each test makes its own user, and CI uses retries (already `retries: 2` on CI) |
 | The site is slow or down | Reasonable timeouts, plus a `@smoke` health check that runs first |
 | Global admin settings changed by others (init balance, loan provider) | Assert relative values, and read the loan provider from the response instead of assuming it |
-| Rate limiting or hammering a public server | Keep the number of parallel workers low (2–3) |
+| Rate limiting or hammering a public server | Keep the number of parallel workers low (2–3). Cloudflare returns 429 / "Error 1015 You are being rate limited" after roughly 50 registration tests in a few minutes, and the ban lasts several minutes. Don't run all three browsers back to back locally |
 
 ---
 
@@ -354,6 +355,7 @@ These were seen manually while writing this plan. Tests covering them should be 
 | KI-05 | Transfer | You can transfer to the same account (From = To) |
 | KI-06 | Find Transactions | An invalid date (13-45-2020) returns an empty results table with no validation error |
 | KI-07 | Registration | Phone # is optional on registration but required on Bill Pay and Update Profile. The rules are inconsistent |
+| KI-08 | Registration | A username longer than 20 characters is rejected with "This username already exists." instead of a length message (seen 08/10/2026) |
 
 ---
 

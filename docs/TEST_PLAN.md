@@ -345,7 +345,8 @@ demoBankingTSAutomationPW/
 
 The shared site rate-limits after roughly 15 tests in a short burst (Cloudflare HTTP 429), so the suite is never run in one go:
 
-- **CI** (`.github/workflows/playwright.yml`) runs only the `@smoke` tests in Chromium plus the API project, about 10 tests, on every push and PR to `main`, and on demand from the Actions tab.
+- **CI** (`.github/workflows/playwright.yml`) does **not** run tests against the site: Cloudflare blocks GitHub's runners. On every push and PR to `main` it only runs static checks: `npm run typecheck`, and `playwright test --list --forbid-only`, which collects every test without running it.
+- **Smoke check before merging:** run `npx playwright test --grep @smoke --project=chromium --project=api` locally (about 10 tests).
 - **The full suite is run locally, one spec file at a time.** Wait a few minutes between files, and longer if a file reports "blocked by Cloudflare". For example:
   - `npm run test:api -- tests/api/transactions.spec.ts`
   - `npm run test:chromium -- tests/ui/transfer.spec.ts`

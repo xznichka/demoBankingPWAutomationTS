@@ -1,15 +1,16 @@
-name: Playwright Tests
+name: Static checks
+# CI does not run tests against ParaBank: the public demo site is behind Cloudflare, which blocks
+# GitHub's runners and rate-limits bursts of tests. Tests are run locally (see docs/TEST_PLAN.md,
+# "Running the suite"). CI checks that the code compiles and that every test can be collected.
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  # Run the smoke tests by hand from the Actions tab.
-  # The full suite is run locally in parts: the shared site rate-limits after roughly 15 tests in a burst.
   workflow_dispatch:
 jobs:
-  test:
-    timeout-minutes: 20
+  check:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -18,14 +19,8 @@ jobs:
         node-version: lts/*
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps chromium
-    - name: Run smoke tests
-      # Chromium + API only (~10 tests), to stay under the site's rate limit.
-      run: npx playwright test --grep @smoke --project=chromium --project=api
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+    - name: Type check
+      run: npm run typecheck
+    - name: Collect all tests
+      # Fails on syntax errors, broken imports, duplicate titles or a leftover test.only.
+      run: npx playwright test --list --forbid-only

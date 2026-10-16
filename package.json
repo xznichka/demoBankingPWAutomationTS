@@ -11,6 +11,8 @@
     "test:chromium": "playwright test --project=chromium",
     "test:firefox": "playwright test --project=firefox",
     "test:webkit": "playwright test --project=webkit",
+    "typecheck": "tsc -p .",
+    "test:list": "playwright test --list",
     "report": "playwright show-report"
   },
   "keywords": [],
@@ -19,6 +21,7 @@
   "type": "commonjs",
   "devDependencies": {
     "@playwright/test": "^1.64.0",
-    "@types/node": "^26.6.4"
+    "@types/node": "^26.6.4",
+    "typescript": "^6.0.3"
   }
 }

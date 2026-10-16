@@ -341,6 +341,17 @@ demoBankingTSAutomationPW/
 - Keep `trace: 'on-first-retry'` and add `screenshot: 'only-on-failure'`.
 - Add npm scripts: `test:smoke` (`--grep @smoke`), `test:ui`, `test:api`.
 
+### Running the suite
+
+The shared site rate-limits after roughly 15 tests in a short burst (Cloudflare HTTP 429), so the suite is never run in one go:
+
+- **CI** (`.github/workflows/playwright.yml`) runs only the `@smoke` tests in Chromium plus the API project, about 10 tests, on every push and PR to `main`, and on demand from the Actions tab.
+- **The full suite is run locally, one spec file at a time.** Wait a few minutes between files, and longer if a file reports "blocked by Cloudflare". For example:
+  - `npm run test:api -- tests/api/transactions.spec.ts`
+  - `npm run test:chromium -- tests/ui/transfer.spec.ts`
+  - then the same file with `test:firefox` and `test:webkit`.
+- The largest file, `register.spec.ts`, has 16 tests per browser. Use `--grep` (e.g. `--grep REG-06`) to split it further if needed.
+
 ---
 
 ## 5. Entry and exit criteria

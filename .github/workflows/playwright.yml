@@ -4,9 +4,8 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  # The full suite is too heavy for the shared ParaBank site on every push, so it runs nightly or on demand.
-  schedule:
-    - cron: '0 3 * * *'
+  # Run the smoke tests by hand from the Actions tab.
+  # The full suite is run locally in parts: the shared site rate-limits after roughly 15 tests in a burst.
   workflow_dispatch:
 jobs:
   test:
@@ -20,13 +19,10 @@ jobs:
     - name: Install dependencies
       run: npm ci
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: npx playwright install --with-deps chromium
     - name: Run smoke tests
-      if: github.event_name == 'push' || github.event_name == 'pull_request'
-      run: npx playwright test --grep @smoke
-    - name: Run full suite
-      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-      run: npx playwright test
+      # Chromium + API only (~10 tests), to stay under the site's rate limit.
+      run: npx playwright test --grep @smoke --project=chromium --project=api
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:

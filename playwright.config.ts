@@ -17,36 +17,50 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Retry once on CI for the site's occasional server errors; more retries just add load when it is rate-limiting us. */
+  retries: process.env.CI ? 1 : 0,
+  /* On CI, give up after 10 failures: usually the shared site is blocking us, and retrying everything takes hours. */
+  maxFailures: process.env.CI ? 10 : undefined,
+  /* Stop immediately if the site is down or Cloudflare is blocking this machine. */
+  globalSetup: './global-setup.ts',
+  /* Keep the load on the shared public server low. */
+  workers: process.env.CI ? 2 : 3,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    // baseURL: 'http://localhost:3000',
+    baseURL: 'https://parabank.parasoft.com/parabank/',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
 
   /* Configure projects for major browsers */
   projects: [
+    /* REST API tests need no browser, so they run once instead of once per browser. */
+    {
+      name: 'api',
+      testMatch: /tests[\\/]api[\\/].*\.spec\.ts$/,
+    },
+
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     /* Test against mobile viewports. */

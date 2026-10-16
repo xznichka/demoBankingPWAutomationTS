@@ -3,7 +3,7 @@
 **Application under test:** https://parabank.parasoft.com/parabank/
 **Framework:** Playwright + TypeScript
 **Browsers:** Chromium, Firefox, WebKit
-**Status:** Draft. No tests implemented yet.
+**Status:** In progress. Implemented: `tests/ui/` register, auth, lookup, accounts, open-account, transfer and bill-pay specs; the full `tests/api/` suite (API-01…12).
 
 ParaBank is a public demo of an online bank, built by Parasoft. It has no real money, but the environment is **shared**: anyone on the internet can create users, move money, or reset the database from the Admin page. The plan is designed around that.
 
@@ -55,6 +55,7 @@ ParaBank is a public demo of an online bank, built by Parasoft. It has no real m
 ### Test data strategy
 
 - **Every test registers its own user**, with a unique username such as `qa_<timestamp>_<random>` and a **unique SSN**. Never rely on a pre-existing account like `john/demo`, because other people change or delete it.
+- Usernames must be **20 characters or fewer** (see KI-08), so use a short form such as `qa_<base36 timestamp>_<4 random>`.
 - A new user always gets one CHECKING account. Its starting balance comes from the global Admin "Init. Balance" setting, $515.50 when observed. Tests should **read the starting balance** rather than hard-code it, and assert on *differences*: balance before vs. after.
 - Generate test data (names, addresses, amounts) in `utils/testData.ts`, so it's never copy-pasted.
 
@@ -65,7 +66,7 @@ ParaBank is a public demo of an online bank, built by Parasoft. It has no real m
 | Someone resets the DB mid-run, so users disappear | Each test makes its own user, and CI uses retries (already `retries: 2` on CI) |
 | The site is slow or down | Reasonable timeouts, plus a `@smoke` health check that runs first |
 | Global admin settings changed by others (init balance, loan provider) | Assert relative values, and read the loan provider from the response instead of assuming it |
-| Rate limiting or hammering a public server | Keep the number of parallel workers low (2–3) |
+| Rate limiting or hammering a public server | Keep the number of parallel workers low (2–3). Cloudflare returns 429 / "Error 1015 You are being rate limited" after roughly 50 registration tests in a few minutes, and the ban lasts several minutes. Don't run all three browsers back to back locally |
 
 ---
 
@@ -135,7 +136,7 @@ Priority: **P1** = critical path / smoke, **P2** = main functionality, **P3** = 
 | TRF-02 | Both accounts show the transaction in their Activity | "Funds Transfer Sent" (debit) and "Funds Transfer Received" (credit) | P2 |
 | TRF-03 | Decimal amount (e.g. 10.55) | Balances are correct to the cent | P3 |
 | TRF-04 | Empty amount | A validation message. *Currently "An internal error has occurred" — KI-03* | P3 |
-| TRF-05 | Non-numeric / negative / zero amount | Rejected with a validation message | P3 |
+| TRF-05 | Non-numeric / negative / zero amount | Rejected with a validation message. *Currently "abc" gives an internal error (KI-03); -10 and 0 are transferred (KI-09)* | P3 |
 | TRF-06 | Amount larger than the balance | Should be rejected. *Currently accepted — KI-04* | P3 |
 | TRF-07 | From and To set to the same account | Should be blocked. *Currently allowed — KI-05* | P3 |
 
@@ -149,7 +150,7 @@ Priority: **P1** = critical path / smoke, **P2** = main functionality, **P3** = 
 | BILL-04 | Account # and Verify Account # differ | "The account numbers do not match." | P2 |
 | BILL-05 | Non-numeric amount | "Please enter a valid amount." | P3 |
 | BILL-06 | Non-numeric account number | A validation message | P3 |
-| BILL-07 | Amount larger than the balance | Should be rejected (check the actual behaviour) | P3 |
+| BILL-07 | Amount larger than the balance | Should be rejected. *Currently accepted — KI-10* | P3 |
 
 ### 3.8 Find Transactions (`FIND`)
 
@@ -224,7 +225,15 @@ Base URL: `https://parabank.parasoft.com/parabank/services/bank`. Send `Accept: 
 | API-11 | `POST /customers/update/{customerId}?...` | Updates the profile | P3 |
 | API-12 | Unknown customer, account or transaction ID | 4xx with an error message, not a 500 | P3 |
 
-Endpoint names should be confirmed against `api-docs/index.html` (OpenAPI) when implementing.
+Endpoints are confirmed against the OpenAPI spec at `services/bank/openapi.json`. Observed behaviour the tests rely on:
+
+- Errors are plain text with HTTP 400, e.g. `Could not find account #123` or `Invalid username and/or password`. A non-numeric ID gives 404 with an empty body.
+- `transfer` and `customers/update` return a plain-text confirmation; the other endpoints return JSON.
+- `createAccount` returns the new account as it was **before** the $100 deposit (`balance: 0`). Read the account back to see the real balance.
+- A denied loan is still HTTP 200, with `approved: false` and `message: "error.insufficient.funds"`.
+- Transaction dates are epoch milliseconds at midnight UTC; date filters take `MM-DD-YYYY`.
+- API tests run once in a browserless `api` Playwright project (`npm run test:api`), not once per browser.
+- **Never call** `cleanDB`, `initializeDB`, `setParameter` or the JMS endpoints: they change the site for every user.
 
 ### 3.14 Cross-feature end-to-end journeys (`E2E`)
 
@@ -332,6 +341,18 @@ demoBankingTSAutomationPW/
 - Keep `trace: 'on-first-retry'` and add `screenshot: 'only-on-failure'`.
 - Add npm scripts: `test:smoke` (`--grep @smoke`), `test:ui`, `test:api`.
 
+### Running the suite
+
+The shared site rate-limits after roughly 15 tests in a short burst (Cloudflare HTTP 429), so the suite is never run in one go:
+
+- **CI** (`.github/workflows/playwright.yml`) does **not** run tests against the site: Cloudflare blocks GitHub's runners. On every push and PR to `main` it only runs static checks: `npm run typecheck`, and `playwright test --list --forbid-only`, which collects every test without running it.
+- **Smoke check before merging:** run `npx playwright test --grep @smoke --project=chromium --project=api` locally (about 10 tests).
+- **The full suite is run locally, one spec file at a time.** Wait a few minutes between files, and longer if a file reports "blocked by Cloudflare". For example:
+  - `npm run test:api -- tests/api/transactions.spec.ts`
+  - `npm run test:chromium -- tests/ui/transfer.spec.ts`
+  - then the same file with `test:firefox` and `test:webkit`.
+- The largest file, `register.spec.ts`, has 16 tests per browser. Use `--grep` (e.g. `--grep REG-06`) to split it further if needed.
+
 ---
 
 ## 5. Entry and exit criteria
@@ -349,11 +370,14 @@ These were seen manually while writing this plan. Tests covering them should be 
 |---|---|---|
 | KI-01 | Lookup | Forgot Login Info returned "could not be found" for a customer that had just been registered and then had its city updated. Needs investigation; it may fail when several customers share an SSN or after a profile update |
 | KI-02 | Security | Opening `overview.htm` while logged out shows "An internal error has occurred and has been logged." instead of redirecting to login |
-| KI-03 | Transfer | Submitting Transfer with an empty amount gives an internal error instead of a validation message |
+| KI-03 | Transfer | Submitting Transfer with an empty or non-numeric amount (e.g. `abc`) gives an internal error instead of a validation message |
 | KI-04 | Transfer | A transfer of $999,999 (far above the balance) is reported as "Transfer Complete!". No overdraft check |
 | KI-05 | Transfer | You can transfer to the same account (From = To) |
 | KI-06 | Find Transactions | An invalid date (13-45-2020) returns an empty results table with no validation error |
 | KI-07 | Registration | Phone # is optional on registration but required on Bill Pay and Update Profile. The rules are inconsistent |
+| KI-08 | Registration | A username longer than 20 characters is rejected with "This username already exists." instead of a length message (seen 08/10/2026) |
+| KI-09 | Transfer | Negative (-10) and zero amounts are reported as "Transfer Complete!"; a negative transfer moves money backwards |
+| KI-10 | Bill Pay | A $999,999 bill payment (far above the balance) is reported as "Bill Payment Complete". No overdraft check |
 
 ---
 

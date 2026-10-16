@@ -6,8 +6,8 @@
   "scripts": {
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
-    "test:ui": "playwright test tests/ui tests/e2e",
-    "test:api": "playwright test tests/api",
+    "test:ui": "playwright test tests/ui tests/e2e --project=chromium --project=firefox --project=webkit",
+    "test:api": "playwright test --project=api",
     "report": "playwright show-report"
   },
   "keywords": [],

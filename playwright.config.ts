@@ -35,19 +35,28 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    /* REST API tests need no browser, so they run once instead of once per browser. */
+    {
+      name: 'api',
+      testMatch: /tests[\\/]api[\\/].*\.spec\.ts$/,
+    },
+
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      testIgnore: /tests[\\/]api[\\/]/,
     },
 
     /* Test against mobile viewports. */

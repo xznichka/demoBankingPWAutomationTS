@@ -45,3 +45,28 @@ export interface BillPayResult {
   amount: number;
   accountId: number;
 }
+
+export interface LoanResponse {
+  /** Epoch milliseconds. */
+  responseDate: number;
+  loanProviderName: string;
+  approved: boolean;
+  /** The new LOAN account, or null when denied. */
+  accountId: number | null;
+  /** Reason code when denied, e.g. "error.insufficient.funds". */
+  message?: string;
+}
+
+/** Every field `customers/update/{customerId}` requires. */
+export interface CustomerUpdate {
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phoneNumber: string;
+  ssn: string;
+  username: string;
+  password: string;
+}

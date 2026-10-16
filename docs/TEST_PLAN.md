@@ -3,7 +3,7 @@
 **Application under test:** https://parabank.parasoft.com/parabank/
 **Framework:** Playwright + TypeScript
 **Browsers:** Chromium, Firefox, WebKit
-**Status:** In progress. Implemented: `tests/ui/` register, auth, lookup, accounts, open-account, transfer and bill-pay specs.
+**Status:** In progress. Implemented: `tests/ui/` register, auth, lookup, accounts, open-account, transfer and bill-pay specs; the full `tests/api/` suite (API-01…12).
 
 ParaBank is a public demo of an online bank, built by Parasoft. It has no real money, but the environment is **shared**: anyone on the internet can create users, move money, or reset the database from the Admin page. The plan is designed around that.
 
@@ -225,7 +225,15 @@ Base URL: `https://parabank.parasoft.com/parabank/services/bank`. Send `Accept: 
 | API-11 | `POST /customers/update/{customerId}?...` | Updates the profile | P3 |
 | API-12 | Unknown customer, account or transaction ID | 4xx with an error message, not a 500 | P3 |
 
-Endpoint names should be confirmed against `api-docs/index.html` (OpenAPI) when implementing.
+Endpoints are confirmed against the OpenAPI spec at `services/bank/openapi.json`. Observed behaviour the tests rely on:
+
+- Errors are plain text with HTTP 400, e.g. `Could not find account #123` or `Invalid username and/or password`. A non-numeric ID gives 404 with an empty body.
+- `transfer` and `customers/update` return a plain-text confirmation; the other endpoints return JSON.
+- `createAccount` returns the new account as it was **before** the $100 deposit (`balance: 0`). Read the account back to see the real balance.
+- A denied loan is still HTTP 200, with `approved: false` and `message: "error.insufficient.funds"`.
+- Transaction dates are epoch milliseconds at midnight UTC; date filters take `MM-DD-YYYY`.
+- API tests run once in a browserless `api` Playwright project (`npm run test:api`), not once per browser.
+- **Never call** `cleanDB`, `initializeDB`, `setParameter` or the JMS endpoints: they change the site for every user.
 
 ### 3.14 Cross-feature end-to-end journeys (`E2E`)
 

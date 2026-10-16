@@ -19,6 +19,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
+  /* On CI, give up after 10 failures: usually the shared site is blocking us, and retrying everything takes hours. */
+  maxFailures: process.env.CI ? 10 : undefined,
+  /* Stop immediately if the site is down or Cloudflare is blocking this machine. */
+  globalSetup: './global-setup.ts',
   /* Keep the load on the shared public server low. */
   workers: process.env.CI ? 2 : 3,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
